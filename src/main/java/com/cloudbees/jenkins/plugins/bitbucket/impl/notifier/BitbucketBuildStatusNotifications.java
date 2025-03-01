@@ -230,18 +230,18 @@ public final class BitbucketBuildStatusNotifications {
              * https://community.atlassian.com/t5/Bitbucket-questions/Re-Builds-not-appearing-in-pull-requests/qaq-p/1805991/comment-id/65864#M65864
              * that means refName null or valued with only head.getBranchName()
              *
-             * For Bitbucket Server, refName should be "refs/heads/" + the name
-             * of the source branch of the pull request, and the build status
-             * should be posted to the repository that contains that branch.
-             * If refName is null, then Bitbucket Server does not show the
-             * build status in the list of pull requests, but still shows it
-             * on the web page of the individual pull request.
+             * For Bitbucket Server, refName is optional.
+             * https://developer.atlassian.com/server/bitbucket/rest/v905/api-group-builds-and-deployments/#api-api-latest-projects-projectkey-repos-repositoryslug-commits-commitid-builds-post
+             * The PR head revision may point to a different source repository, for example a personal fork. We will
+             * be notifying the PR target repo status where the head branch may not exist, so a null refName will
+             * suffice.
              */
+            refName = null;
             bitbucket = source.buildBitbucketClient(head);
-            if (BitbucketApiUtils.isCloud(bitbucket)) {
-                refName = null;
-            } else {
-                refName = "refs/heads/" + head.getBranchName();
+            if (!BitbucketApiUtils.isCloud(bitbucket)) {
+                // For  Bitbucket Server, notify the target of the PR. Head may point to a source repo that the
+                // credentials don't have access to resulting in a 401 error.
+                bitbucket = source.buildBitbucketClient();
             }
         } else {
             listener.getLogger().println("[Bitbucket] Notifying commit build result");
